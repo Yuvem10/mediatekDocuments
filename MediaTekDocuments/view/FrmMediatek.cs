@@ -20,6 +20,11 @@ namespace MediaTekDocuments.view
         private readonly BindingSource bdgGenres = new BindingSource();
         private readonly BindingSource bdgPublics = new BindingSource();
         private readonly BindingSource bdgRayons = new BindingSource();
+        private readonly BindingSource bdgStatuts = new BindingSource();
+        string globalId = ""; 
+        string globalStatut = "";
+        bool globalSelected = false;
+        
 
         /// <summary>
         /// Constructeur : création du contrôleur lié à ce formulaire
@@ -65,6 +70,7 @@ namespace MediaTekDocuments.view
             RemplirComboCategorie(controller.GetAllRayons(), bdgRayons, cbxLivresRayons);
             RemplirLivresListeComplete();
         }
+
 
         /// <summary>
         /// Remplit le dategrid avec la liste reçue en paramètre
@@ -1240,17 +1246,1006 @@ namespace MediaTekDocuments.view
         }
         #endregion
 
-        private void button1_Click(object sender, EventArgs e)
+
+
+
+
+        #region Onglet Commandes Livres
+        private readonly BindingSource bdgCommandes = new BindingSource();
+        private readonly BindingSource bdgCommandeDocuments = new BindingSource();
+
+
+
+        /// <summary>
+        /// actions when the order tab is opened
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TabCommande_Enter(object sender, EventArgs e)
+        {
+            lesLivres = controller.GetAllLivres();
+            RemplirComboCategorie(controller.GetAllGenres(), bdgGenres, cbxBooksGenres);
+            RemplirComboCategorie(controller.GetAllPublics(), bdgPublics, cbxBooksPublics);
+            RemplirComboCategorie(controller.GetAllRayons(), bdgRayons, cbxBooksRayons);
+            fillBooksFullList();
+            fillStatusCombo();
+            fillOrdersFullList();
+            btnCommandeNouveau_Click(sender, e);
+
+        }
+
+        /// <summary>
+        /// display the information of the selected line
+        /// </summary>
+        private void dgvOrdersList_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dgvOrdersList.CurrentCell != null)
+            {
+                try
+                {
+                    string idCommande = (string)dgvOrdersList.CurrentRow.Cells[0].Value;
+                    CommandeDocument commandeDocument = controller.retrieveCommandeDocumentById(idCommande);
+                    Commande commande = controller.retrieveCommandeById(idCommande);
+                    txbCommandeId.Text = commande.id.ToString();
+                    dtpCommandeDate.Value = commande.dateCommande;
+                    txbCommandeMontant.Text = commande.montant.ToString();
+                    txbCommandeNbExemplaires.Text = commandeDocument.nbExemplaire.ToString();
+                    cbxStatut.SelectedValue = commandeDocument.statut;
+
+                    // set the book title of selected line on the textboxlivrecom
+                    int id = dgvOrdersList.Columns["LivreCom"].Index;
+                    txbLivreCom.Text = dgvOrdersList.CurrentRow.Cells[id].Value.ToString();
+
+
+                    // disable the fields
+                    txbCommandeId.Enabled = false;
+                    dtpCommandeDate.Enabled = false;
+                    txbCommandeMontant.Enabled = false;
+                    txbCommandeNbExemplaires.Enabled = false;
+                    txbLivreCom.Enabled = false;
+
+                    // enabled the cbxstatut
+                    cbxStatut.Enabled = true;
+
+                    // disabled the buttons
+                    btnCommandeAjouter.Enabled = false;
+                    btnCommandeModifier.Enabled = true;
+                    btnCommandeSupprimer.Enabled = true;
+                    btnCommandeNouvelle.Enabled = true;
+
+                    // set the value of cbxStatut to the global variable
+                    globalStatut = cbxStatut.Text;
+
+                    // set the globalSelected to true
+                    globalSelected = true;
+
+                }
+                catch
+                {
+                    emptyOrderZone();
+                }
+            }
+            else
+            {
+                emptyOrderZone();
+            }
+        }
+
+        /// <summary>
+        /// set the id value of the selected line in the datagrid of books
+        /// </summary>
+        private void dgvLivresCmd_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dgvLivresCmd.CurrentCell != null)
+            {
+                try
+                {
+                    int id = dgvLivresCmd.Columns["id"].Index;
+                    globalId = dgvLivresCmd.CurrentRow.Cells[id].Value.ToString();
+
+
+                    if (!globalSelected)
+                    {
+                        // set the value of the selected line in the textboxlivrecom
+                        int idLivreCom = dgvLivresCmd.Columns["titre"].Index;
+                        txbLivreCom.Text = dgvLivresCmd.CurrentRow.Cells[idLivreCom].Value.ToString();
+                    }
+                    
+
+                }
+                catch
+                {
+                    
+                }
+            }
+            else
+            {
+                
+            }
+        }
+
+
+        /// <summary>
+        /// Add a new order to the database
+        /// </summary>
+        private void btnCommandeAjouter_Click(object sender, EventArgs e)
+        {
+            if (txbCommandeMontant.Text == "" || txbCommandeNbExemplaires.Text == "")
+            {
+                MessageBox.Show("Veuillez remplir tous les champs");
+            }
+            else
+            {
+                CommandeDocument commandeDocument = new CommandeDocument(txbCommandeId.Text, dtpCommandeDate.Value, int.Parse(txbCommandeMontant.Text), int.Parse(txbCommandeNbExemplaires.Text), globalId, cbxStatut.Text); ;
+                controller.AddCommandeDocument(commandeDocument);
+                fillOrdersFullList();
+            }
+
+            
+            
+        }
+
+  
+
+        ///<summary>
+        /// new order button
+        /// </summary>
+        private void btnCommandeNouveau_Click(object sender, EventArgs e)
+        {
+            globalSelected = false;
+            emptyOrderZone();
+            txbCommandeId.Enabled = true;
+            dtpCommandeDate.Enabled = true;
+            txbCommandeMontant.Enabled = true;
+            txbCommandeNbExemplaires.Enabled = true;
+
+            // set the value "en cours" by default in the status combo
+            cbxStatut.SelectedIndex = 0;
+            cbxStatut.Enabled = false;
+
+            // set the name of the order
+            string orderName = controller.SetNameOrder(true);
+            txbCommandeId.Text = orderName;
+
+            
+
+            // disabled the input of the name of the order
+            txbCommandeId.Enabled = false;
+
+            btnCommandeAjouter.Enabled = true;
+            btnCommandeModifier.Enabled = false;
+            btnCommandeSupprimer.Enabled = false;
+
+        }
+
+        /// <summary>
+        /// click on the modify button to save the change of the status of the order
+        /// </summary>
+        private void btnCommandeModifier_Click(object sender, EventArgs e)
+        {
+
+            bool refusable = false;
+            if (globalStatut == "Livrée" || globalStatut == "Réglée")
+            {
+                if (cbxStatut.Text == "En cours" || cbxStatut.Text == "Relancée")
+                {
+                    MessageBox.Show("La commande est déjà " + globalStatut + " elle ne peut pas revenir à une étape intermédiaire");
+                    refusable = true;
+                }
+                else
+                {
+                    refusable = false;
+                }
+            }
+            if (cbxStatut.Text == "Réglée" && globalStatut != "Livrée")
+            {
+                MessageBox.Show("Il faut que la commande soit livrée pour être réglée");
+                refusable = true;
+            }
+
+            if (refusable == false)
+            {
+                controller.updateOrderStatus(txbCommandeId.Text, cbxStatut.Text);
+                fillOrdersFullList();
+            }   
+        }
+
+        ///<summary>
+        ///click on the delete button to delete the order
+        /// </summary>
+        private void btnCommandeSupprimer_Click(object sender, EventArgs e)
+        {
+            if (cbxStatut.Text == "Livrée")
+            {
+                MessageBox.Show("La commande est livrée, elle ne peut pas être supprimée");
+            }
+            else
+            {
+                // delete the order
+                controller.deleteOrder(txbCommandeId.Text);
+                fillOrdersFullList();
+                MessageBox.Show("La commande a été supprimée avec succès", "Suppression de commande");
+            }
+            
+        }
+       
+
+        /// <summary>
+        /// empty the order zone
+        /// </summary>
+        private void emptyOrderZone()
+        {
+            txbCommandeId.Text = "";
+            dtpCommandeDate.Value = DateTime.Now;
+            txbCommandeMontant.Text = "";
+            txbCommandeNbExemplaires.Text = "";
+            cbxStatut.SelectedIndex = -1;
+        }
+
+        ///<summary>
+        /// fill the status combo
+        /// </summary>
+        private void fillStatusCombo()
+        {
+            List<Suivi> etats = controller.GetAllStatus();
+            bdgCommandes.DataSource = etats;
+            cbxStatut.DataSource = bdgCommandes;
+            cbxStatut.ValueMember = "statut";
+            // disable the input of the status combo
+            cbxStatut.DropDownStyle = ComboBoxStyle.DropDownList;
+        }
+
+        /// <summary>
+        /// clear the search and filter zones
+        /// </summary>
+        private void emptyBooksZone()
+        {
+            txbBooksNumSearch.Text = "";
+            cbxBooksGenres.SelectedIndex = -1;
+            cbxBooksRayons.SelectedIndex = -1;
+            cbxBooksPublics.SelectedIndex = -1;
+            txbBooksTitleSearch.Text = "";
+        }
+
+
+        /// <summary>
+        /// display the full list of books
+        /// </summary>
+        private void fillBooksFullList()
+        {
+            fillBooksList(lesLivres);
+            emptyBooksZone();
+        }
+
+        /// <summary>
+        /// display the full list of orders
+        /// </summary>
+        private void fillOrdersFullList()
+        {
+            int orderCount = controller.GetOrderCount();
+            if (orderCount == 0)
+            {
+                globalSelected = false;
+                emptyOrderZone();
+                txbCommandeId.Enabled = true;
+                dtpCommandeDate.Enabled = true;
+                txbCommandeMontant.Enabled = true;
+                txbCommandeNbExemplaires.Enabled = true;
+                txbLivreCom.Enabled = false;
+
+                // set the value "en cours" by default in the status combo
+                cbxStatut.SelectedIndex = 0;
+                cbxStatut.Enabled = false;
+
+                // set the name of the order
+                string orderName = controller.SetNameOrder(true);
+                txbCommandeId.Text = orderName;
+
+
+
+                // disabled the input of the name of the order
+                txbCommandeId.Enabled = false;
+
+                btnCommandeAjouter.Enabled = true;
+                btnCommandeModifier.Enabled = false;
+                btnCommandeSupprimer.Enabled = false;
+                btnCommandeNouvelle.Enabled = false;
+            }
+            List<CommandeDocument> commandeDocuments = controller.GetAllCommandeDocumentsLivre();
+            fillOrdersList(commandeDocuments);
+        }
+
+        /// <summary>
+        /// fill the datagrid with the list of orders
+        /// </summary>
+        /// <param name="commandeDocuments">liste de commandes</param>
+        private void fillOrdersList(List<CommandeDocument> commandeDocuments)
+        {
+            // Effacer les colonnes existantes
+            dgvOrdersList.Columns.Clear();
+
+            // Ajouter les colonnes nécessaires
+            dgvOrdersList.Columns.Add("Id", "Nom");
+            dgvOrdersList.Columns.Add("DateCommande", "Date de commande");
+            dgvOrdersList.Columns.Add("Montant", "Montant");
+            dgvOrdersList.Columns.Add("NbExemplaire", "Nombre d'exemplaires");
+            dgvOrdersList.Columns.Add("LivreCom", "Livre commandé");
+            dgvOrdersList.Columns.Add("Statut", "Statut");
+
+            // Remplir les lignes avec les données de la liste commandeDocuments
+            foreach (var commande in commandeDocuments)
+            {
+                Commande currentCommande = controller.retrieveCommandeById(commande.id);
+                Document livre = controller.retrieveDocumentById(commande.idLivreDvd);
+                string titleBook = livre.Titre;
+                dgvOrdersList.Rows.Add(commande.id, currentCommande.dateCommande.ToShortDateString(), currentCommande.montant, commande.nbExemplaire, titleBook ,commande.statut);
+            }
+        }
+
+        /// <summary>
+        /// fill the datagrid with the list of books
+        /// </summary>
+        /// <param name="livres">liste de livres</param>
+        private void fillBooksList(List<Livre> livres)
+        {
+            bdgLivresListe.DataSource = livres;
+            dgvLivresCmd.DataSource = bdgLivresListe;
+            dgvLivresCmd.Columns["isbn"].Visible = false;
+            dgvLivresCmd.Columns["idRayon"].Visible = false;
+            dgvLivresCmd.Columns["idGenre"].Visible = false;
+            dgvLivresCmd.Columns["idPublic"].Visible = false;
+            dgvLivresCmd.Columns["image"].Visible = false;
+            dgvLivresCmd.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+            dgvLivresCmd.Columns["id"].DisplayIndex = 0;
+            dgvLivresCmd.Columns["titre"].DisplayIndex = 1;
+        }
+
+        /// <summary>
+        /// sort the list of books according to the column clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void dgvLivresCmd_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            emptyBooksZone();
+            string titreColonne = dgvLivresCmd.Columns[e.ColumnIndex].HeaderText;
+            List<Livre> sortedList = new List<Livre>();
+            switch (titreColonne)
+            {
+                case "Id":
+                    sortedList = lesLivres.OrderBy(o => o.Id).ToList();
+                    break;
+                case "Titre":
+                    sortedList = lesLivres.OrderBy(o => o.Titre).ToList();
+                    break;
+                case "Auteur":
+                    sortedList = lesLivres.OrderBy(o => o.Auteur).ToList();
+                    break;
+                case "Collection":
+                    sortedList = lesLivres.OrderBy(o => o.Collection).ToList();
+                    break;
+                case "Genre":
+                    sortedList = lesLivres.OrderBy(o => o.Genre).ToList();
+                    break;
+                case "Public":
+                    sortedList = lesLivres.OrderBy(o => o.Public).ToList();
+                    break;
+                case "Rayon":
+                    sortedList = lesLivres.OrderBy(o => o.Rayon).ToList();
+                    break;
+            }
+            fillBooksList(sortedList);
+        }
+
+
+
+        /// <summary>
+        /// search for a book by its number
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CommandPageNumBookSearch_Click(object sender, EventArgs e)
+        {
+            if (!txbBooksNumSearch.Text.Equals(""))
+            {
+                Livre livre = lesLivres.Find(x => x.Id.Equals(txbBooksNumSearch.Text));
+                if (livre != null)
+                {
+                    List<Livre> livres = new List<Livre>() { livre };
+                    fillBooksList(livres);
+                }
+                else
+                {
+                    MessageBox.Show("numéro introuvable");
+                    fillBooksFullList();
+                }
+            }
+            else
+            {
+                fillBooksFullList();
+            }
+        }
+        /// <summary>
+        /// search for a book by its title and display the result 
+        /// during each character added or removed from the search zone
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TxbBooksTitleSearch_TextChanged(object sender, EventArgs e)
+        {
+            if (!txbBooksTitleSearch.Text.Equals(""))
+            {
+                cbxBooksGenres.SelectedIndex = -1;
+                cbxBooksRayons.SelectedIndex = -1;
+                cbxBooksPublics.SelectedIndex = -1;
+                txbBooksNumSearch.Text = "";
+                List<Livre> lesLivresParTitre;
+                lesLivresParTitre = lesLivres.FindAll(x => x.Titre.ToLower().Contains(txbBooksTitleSearch.Text.ToLower()));
+                fillBooksList(lesLivresParTitre);
+            }
+            else
+            {
+                if (cbxBooksGenres.SelectedIndex < 0 && cbxBooksPublics.SelectedIndex < 0 && cbxBooksRayons.SelectedIndex < 0
+                    && txbBooksTitleSearch.Text.Equals(""))
+                {
+                    fillBooksFullList();
+                }
+            }
+        }
+        /// <summary>
+        /// cancel the search and display the full list of books
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnBooksAnnulPublics_Click(object sender, EventArgs e)
+        {
+            fillBooksFullList();
+        }
+
+        /// <summary>
+        /// cancel the search and display the full list of books
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnBooksAnnulGenres_Click(object sender, EventArgs e)
+        {
+            fillBooksFullList();
+        }
+
+        /// <summary>
+        /// cancel the search and display the full list of books
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnBooksAnnulRayons_Click(object sender, EventArgs e)
+        {
+            fillBooksFullList();
+        }
+
+        #endregion
+
+        #region Onglet Commandes de DVD
+
+        private readonly BindingSource bdgCommandesDvd = new BindingSource();
+        private readonly BindingSource bdgCommandeDocumentsDvd = new BindingSource();
+
+
+
+        /// <summary>
+        /// actions when the order tab is opened
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TabCommandeDvd_Enter(object sender, EventArgs e)
+        {
+            lesDvd = controller.GetAllDvd();
+            RemplirComboCategorie(controller.GetAllGenres(), bdgGenres, cbxBooksGenresDvd);
+            RemplirComboCategorie(controller.GetAllPublics(), bdgPublics, cbxBooksPublicsDvd);
+            RemplirComboCategorie(controller.GetAllRayons(), bdgRayons, cbxBooksRayonsDvd);
+            fillBooksFullListDvd();
+            fillStatusComboDvd();
+            fillOrdersFullListDvd();
+            btnCommandeNouveauDvd_Click(sender, e);
+
+        }
+
+        /// <summary>
+        /// display the information of the selected line
+        /// </summary>
+        private void dgvOrdersListDvd_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dgvOrdersListDvd.CurrentCell != null)
+            {
+                try
+                {
+                    string idCommande = (string)dgvOrdersListDvd.CurrentRow.Cells[0].Value;
+                    CommandeDocument commandeDocument = controller.retrieveCommandeDocumentById(idCommande);
+                    Commande commande = controller.retrieveCommandeById(idCommande);
+                    txbCommandeIdDvd.Text = commande.id.ToString();
+                    dtpCommandeDateDvd.Value = commande.dateCommande;
+                    txbCommandeMontantDvd.Text = commande.montant.ToString();
+                    txbCommandeNbExemplairesDvd.Text = commandeDocument.nbExemplaire.ToString();
+                    cbxStatutDvd.SelectedValue = commandeDocument.statut;
+
+                    // set the book title of selected line on the textboxlivrecom
+                    int id = dgvOrdersListDvd.Columns["DvdCom"].Index;
+                    txbLivreComDvd.Text = dgvOrdersListDvd.CurrentRow.Cells[id].Value.ToString();
+
+
+                    // disable the fields
+                    txbCommandeIdDvd.Enabled = false;
+                    dtpCommandeDateDvd.Enabled = false;
+                    txbCommandeMontantDvd.Enabled = false;
+                    txbCommandeNbExemplairesDvd.Enabled = false;
+                    txbLivreComDvd.Enabled = false;
+
+                    // enabled the cbxstatut
+                    cbxStatutDvd.Enabled = true;
+
+                    // disabled the buttons
+                    btnCommandeAjouterDvd.Enabled = false;
+                    btnCommandeModifierDvd.Enabled = true;
+                    btnCommandeSupprimerDvd.Enabled = true;
+                    btnCommandeNouvelleDvd.Enabled = true;
+
+                    // set the value of cbxStatut to the global variable
+                    globalStatut = cbxStatutDvd.Text;
+
+                    // set the globalSelected to true
+                    globalSelected = true;
+
+                }
+                catch
+                {
+                    emptyOrderZoneDvd();
+                }
+            }
+            else
+            {
+                emptyOrderZoneDvd();
+            }
+        }
+        
+        /// <summary>
+        /// set the id value of the selected line in the datagrid of books
+        /// </summary>
+        private void dgvLivresCmdDvd_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dgvLivresCmdDvd.CurrentCell != null)
+            {
+                try
+                {
+                    int id = dgvLivresCmdDvd.Columns["id"].Index;
+                    globalId = dgvLivresCmdDvd.CurrentRow.Cells[id].Value.ToString();
+
+
+                    if (!globalSelected)
+                    {
+                        // set the value of the selected line in the textboxlivrecom
+                        int idLivreCom = dgvLivresCmdDvd.Columns["titre"].Index;
+                        txbLivreComDvd.Text = dgvLivresCmdDvd.CurrentRow.Cells[idLivreCom].Value.ToString();
+                    }
+                    
+
+                }
+                catch
+                {
+                    
+                }
+            }
+            else
+            {
+                
+            }
+        }
+
+
+        /// <summary>
+        /// Add a new order to the database
+        /// </summary>
+        private void btnCommandeAjouterDvd_Click(object sender, EventArgs e)
+        {
+
+            if (txbCommandeNbExemplairesDvd.Text == "" || txbCommandeMontantDvd.Text == "")
+            {
+                MessageBox.Show("Veuillez remplir tous les champs");
+            }
+            else
+            {
+                CommandeDocument commandeDocument = new CommandeDocument(txbCommandeIdDvd.Text, dtpCommandeDateDvd.Value, int.Parse(txbCommandeMontantDvd.Text), int.Parse(txbCommandeNbExemplairesDvd.Text), globalId, cbxStatutDvd.Text); ;
+                controller.AddCommandeDocument(commandeDocument);
+                fillOrdersFullListDvd();
+            }
+        }
+
+  
+
+        ///<summary>
+        /// new order button
+        /// </summary>
+        private void btnCommandeNouveauDvd_Click(object sender, EventArgs e)
+        {
+            globalSelected = false;
+            emptyOrderZoneDvd();
+            txbCommandeIdDvd.Enabled = true;
+            dtpCommandeDateDvd.Enabled = true;
+            txbCommandeMontantDvd.Enabled = true;
+            txbCommandeNbExemplairesDvd.Enabled = true;
+
+            // set the value "en cours" by default in the status combo
+            cbxStatutDvd.SelectedIndex = 0;
+            cbxStatutDvd.Enabled = false;
+
+            // set the name of the order
+            string orderName = controller.SetNameOrder(false);
+            txbCommandeIdDvd.Text = orderName;
+
+            
+
+            // disabled the input of the name of the order
+            txbCommandeIdDvd.Enabled = false;
+
+            btnCommandeAjouterDvd.Enabled = true;
+            btnCommandeModifierDvd.Enabled = false;
+            btnCommandeSupprimerDvd.Enabled = false;
+
+        }
+
+        /// <summary>
+        /// click on the modify button to save the change of the status of the order
+        /// </summary>
+        private void btnCommandeModifierDvd_Click(object sender, EventArgs e)
+        {
+
+            bool refusable = false;
+            if (globalStatut == "Livrée" || globalStatut == "Réglée")
+            {
+                if (cbxStatutDvd.Text == "En cours" || cbxStatutDvd.Text == "Relancée")
+                {
+                    MessageBox.Show("La commande est déjà " + globalStatut + " elle ne peut pas revenir à une étape intermédiaire");
+                    refusable = true;
+                }
+                else
+                {
+                    refusable = false;
+                }
+            }
+            if (cbxStatutDvd.Text == "Réglée" && globalStatut != "Livrée")
+            {
+                MessageBox.Show("Il faut que la commande soit livrée pour être réglée");
+                refusable = true;
+            }
+
+            if (refusable == false)
+            {
+                controller.updateOrderStatus(txbCommandeIdDvd.Text, cbxStatutDvd.Text);
+                fillOrdersFullListDvd();
+            }   
+        }
+
+        ///<summary>
+        ///click on the delete button to delete the order
+        /// </summary>
+        private void btnCommandeSupprimerDvd_Click(object sender, EventArgs e)
+        {
+            if (cbxStatutDvd.Text == "Livrée")
+            {
+                MessageBox.Show("La commande est livrée, elle ne peut pas être supprimée");
+            }
+            else
+            {
+                // delete the order
+                controller.deleteOrder(txbCommandeIdDvd.Text);
+                fillOrdersFullListDvd();
+                MessageBox.Show("La commande a été supprimée avec succès", "Suppression de commande");
+            }
+            
+        }
+       
+
+        /// <summary>
+        /// empty the order zone
+        /// </summary>
+        private void emptyOrderZoneDvd()
+        {
+            txbCommandeIdDvd.Text = "";
+            dtpCommandeDateDvd.Value = DateTime.Now;
+            txbCommandeMontantDvd.Text = "";
+            txbCommandeNbExemplairesDvd.Text = "";
+            cbxStatutDvd.SelectedIndex = -1;
+        }
+
+        ///<summary>
+        /// fill the status combo
+        /// </summary>
+        private void fillStatusComboDvd()
+        {
+            List<Suivi> etats = controller.GetAllStatus();
+            bdgCommandesDvd.DataSource = etats;
+            cbxStatutDvd.DataSource = bdgCommandesDvd;
+            cbxStatutDvd.ValueMember = "statut";
+            // disable the input of the status combo
+            cbxStatutDvd.DropDownStyle = ComboBoxStyle.DropDownList;
+        }
+
+        /// <summary>
+        /// clear the search and filter zones
+        /// </summary>
+        private void emptyBooksZoneDvd()
+        {
+            txbBooksNumSearchDvd.Text = "";
+            cbxBooksGenresDvd.SelectedIndex = -1;
+            cbxBooksRayonsDvd.SelectedIndex = -1;
+            cbxBooksPublicsDvd.SelectedIndex = -1;
+            txbBooksTitleSearchDvd.Text = "";
+        }
+
+
+        /// <summary>
+        /// display the full list of books
+        /// </summary>
+        private void fillBooksFullListDvd()
+        {
+            fillBooksListDvd(lesDvd);
+            emptyBooksZoneDvd();
+        }
+
+        /// <summary>
+        /// display the full list of orders
+        /// </summary>
+        private void fillOrdersFullListDvd()
+        {
+            int orderCount = controller.GetOrderCount();
+            if (orderCount == 0)
+            {
+                globalSelected = false;
+                emptyOrderZoneDvd();
+                txbCommandeIdDvd.Enabled = true;
+                dtpCommandeDateDvd.Enabled = true;
+                txbCommandeMontantDvd.Enabled = true;
+                txbCommandeNbExemplairesDvd.Enabled = true;
+                txbLivreComDvd.Enabled = false;
+
+                // set the value "en cours" by default in the status combo
+                cbxStatutDvd.SelectedIndex = 0;
+                cbxStatutDvd.Enabled = false;
+
+                // set the name of the order
+                string orderName = controller.SetNameOrder(false);
+                txbCommandeIdDvd.Text = orderName;
+
+
+
+                // disabled the input of the name of the order
+                txbCommandeIdDvd.Enabled = false;
+
+                btnCommandeAjouterDvd.Enabled = true;
+                btnCommandeModifierDvd.Enabled = false;
+                btnCommandeSupprimerDvd.Enabled = false;
+                btnCommandeNouvelleDvd.Enabled = false;
+            }
+            List<CommandeDocument> commandeDocuments = controller.GetAllCommandeDocumentsDvd();
+            fillOrdersListDvd(commandeDocuments);
+        }
+
+        /// <summary>
+        /// fill the datagrid with the list of orders
+        /// </summary>
+        /// <param name="commandeDocuments">liste de commandes</param>
+        private void fillOrdersListDvd(List<CommandeDocument> commandeDocuments)
+        {
+            // Effacer les colonnes existantes
+            dgvOrdersListDvd.Columns.Clear();
+
+            // Ajouter les colonnes nécessaires
+            dgvOrdersListDvd.Columns.Add("Id", "Nom");
+            dgvOrdersListDvd.Columns.Add("DateCommande", "Date de commande");
+            dgvOrdersListDvd.Columns.Add("Montant", "Montant");
+            dgvOrdersListDvd.Columns.Add("NbExemplaire", "Nombre d'exemplaires");
+            dgvOrdersListDvd.Columns.Add("DvdCom", "Dvd commandé");
+            dgvOrdersListDvd.Columns.Add("Statut", "Statut");
+
+            // Remplir les lignes avec les données de la liste commandeDocuments
+            foreach (var commande in commandeDocuments)
+            {
+                Commande currentCommande = controller.retrieveCommandeById(commande.id);
+                Document dvd = controller.retrieveDocumentById(commande.idLivreDvd);
+                string titleDvd = dvd.Titre;
+                dgvOrdersListDvd.Rows.Add(commande.id, currentCommande.dateCommande.ToShortDateString(), currentCommande.montant, commande.nbExemplaire, titleDvd ,commande.statut);
+            }
+        }
+
+        /// <summary>
+        /// fill the datagrid with the list of books
+        /// </summary>
+        /// <param name="livres">liste de livres</param>
+        private void fillBooksListDvd(List<Dvd> dvd)
+        {
+            bdgDvdListe.DataSource = dvd;
+            dgvLivresCmdDvd.DataSource = bdgDvdListe;
+            
+            dgvLivresCmdDvd.Columns["idRayon"].Visible = false;
+            dgvLivresCmdDvd.Columns["idGenre"].Visible = false;
+            dgvLivresCmdDvd.Columns["idPublic"].Visible = false;
+            dgvLivresCmdDvd.Columns["image"].Visible = false; 
+            dgvLivresCmdDvd.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+            dgvLivresCmdDvd.Columns["id"].DisplayIndex = 0;
+            dgvLivresCmdDvd.Columns["titre"].DisplayIndex = 1;
+        }
+
+        /// <summary>
+        /// sort the list of books according to the column clicked
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void dgvLivresCmdDvd_ColumnHeaderMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            emptyBooksZoneDvd();
+            string titreColonne = dgvLivresCmdDvd.Columns[e.ColumnIndex].HeaderText;
+            List<Dvd> sortedList = new List<Dvd>();
+            switch (titreColonne)
+            {
+                case "Id":
+                    sortedList = lesDvd.OrderBy(o => o.Id).ToList();
+                    break;
+                case "Titre":
+                    sortedList = lesDvd.OrderBy(o => o.Titre).ToList();
+                    break;
+                case "Realisateur":
+                    sortedList = lesDvd.OrderBy(o => o.Realisateur).ToList();
+                    break;
+                case "Synopsis":
+                    sortedList = lesDvd.OrderBy(o => o.Synopsis).ToList();
+                    break;
+                case "Genre":
+                    sortedList = lesDvd.OrderBy(o => o.Genre).ToList();
+                    break;
+                case "Public":
+                    sortedList = lesDvd.OrderBy(o => o.Public).ToList();
+                    break;
+                case "Rayon":
+                    sortedList = lesDvd.OrderBy(o => o.Rayon).ToList();
+                    break;
+            }
+            fillBooksListDvd(sortedList);
+        }
+
+
+
+        /// <summary>
+        /// search for a book by its number
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void CommandPageNumBookSearchDvd_Click(object sender, EventArgs e)
+        {
+            if (!txbBooksNumSearchDvd.Text.Equals(""))
+            {
+                Dvd dvd = lesDvd.Find(x => x.Id.Equals(txbBooksNumSearchDvd.Text));
+                if (dvd != null)
+                {
+                    List<Dvd> dvds = new List<Dvd>() { dvd };
+                    fillBooksListDvd(dvds);
+                }
+                else
+                {
+                    MessageBox.Show("numéro introuvable");
+                    fillBooksFullListDvd();
+                }
+            }
+            else
+            {
+                fillBooksFullListDvd();
+            }
+        }
+        /// <summary>
+        /// search for a book by its title and display the result 
+        /// during each character added or removed from the search zone
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void TxbBooksTitleSearchDvd_TextChanged(object sender, EventArgs e)
+        {
+            if (!txbBooksTitleSearchDvd.Text.Equals(""))
+            {
+                cbxBooksGenresDvd.SelectedIndex = -1;
+                cbxBooksRayonsDvd.SelectedIndex = -1;
+                cbxBooksPublicsDvd.SelectedIndex = -1;
+                txbBooksNumSearchDvd.Text = "";
+                List<Dvd> lesDvdsParTitre;
+                lesDvdsParTitre = lesDvd.FindAll(x => x.Titre.ToLower().Contains(txbBooksTitleSearchDvd.Text.ToLower()));
+                fillBooksListDvd(lesDvdsParTitre);
+            }
+            else
+            {
+                if (cbxBooksGenresDvd.SelectedIndex < 0 && cbxBooksPublicsDvd.SelectedIndex < 0 && cbxBooksRayonsDvd.SelectedIndex < 0
+                    && txbBooksTitleSearchDvd.Text.Equals(""))
+                {
+                    fillBooksFullListDvd();
+                }
+            }
+        }
+        /// <summary>
+        /// cancel the search and display the full list of books
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnBooksAnnulPublicsDvd_Click(object sender, EventArgs e)
+        {
+            fillBooksFullListDvd();
+        }
+
+        /// <summary>
+        /// cancel the search and display the full list of books
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnBooksAnnulGenresDvd_Click(object sender, EventArgs e)
+        {
+            fillBooksFullListDvd();
+        }
+
+        /// <summary>
+        /// cancel the search and display the full list of books
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void BtnBooksAnnulRayonsDvd_Click(object sender, EventArgs e)
+        {
+            fillBooksFullListDvd();
+        }
+
+        #endregion
+
+
+
+
+
+
+
+
+
+        private void txbLivresNumRecherche_TextChanged(object sender, EventArgs e)
         {
 
         }
 
-        private void button2_Click(object sender, EventArgs e)
+        private void dgvLivresListe_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
 
         }
 
-        private void button1_Click_1(object sender, EventArgs e)
+        private void grpLivresRecherche_Enter(object sender, EventArgs e)
+        {
+
+        }
+
+        private void groupBox3_Enter(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label63_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label68_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void dgvOrdersList_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+
+        private void label69_Click(object sender, EventArgs e)
         {
 
         }

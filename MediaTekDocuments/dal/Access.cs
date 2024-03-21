@@ -6,6 +6,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System.Configuration;
+using System.Xml.Linq;
 
 namespace MediaTekDocuments.dal
 {
@@ -36,6 +37,12 @@ namespace MediaTekDocuments.dal
         private const string POST = "POST";
         /// <summary>
         /// méthode HTTP pour update
+        /// </summary>
+        public const string PUT = "PUT";
+        /// <summary>
+        /// methode HTTP pour delete
+        /// </summary>
+        public const string DELETE = "DELETE";
 
         /// <summary>
         /// Méthode privée pour créer un singleton
@@ -100,6 +107,261 @@ namespace MediaTekDocuments.dal
         }
 
         /// <summary>
+        /// retrieve all status from the database
+        /// </summary>
+        /// <returns>list of status</returns>
+        public List<Suivi> GetAllStatus()
+        {
+            IEnumerable<Suivi> lesStatus = TraitementRecup<Suivi>(GET, "suivi");
+            return new List<Suivi>(lesStatus);
+        }
+
+        /// <summary>
+        /// retrieve the specific status from the database with the id
+        /// </summary>5
+        public Suivi GetStatus(string id)
+        {
+            IEnumerable<Suivi> lesStatus = TraitementRecup<Suivi>(GET, "suivi/" + id);
+            return new List<Suivi>(lesStatus)[0];
+        }
+
+       /// <summary>
+       /// retrieve all the orders documents from the database
+       /// </summary>
+       /// <returns>List<returns>
+       public List<CommandeDocument> GetAllCommandeDocuments()
+       {
+            IEnumerable<CommandeDocument> commandeDocuments = TraitementRecup<CommandeDocument>(GET, "CommandeDocument");
+            return new List<CommandeDocument>(commandeDocuments);
+       }
+
+        ///<summary>
+        /// retrieve order by its id
+        /// </summary>
+        /// <returns>commande</returns>
+        public Commande retrieveCommandeById(string id)
+        {
+            String jsonIdDocument = convertToJson("id", id);
+            IEnumerable<Commande> commande = TraitementRecup<Commande>(GET, "commande/" + jsonIdDocument);
+            return new List<Commande>(commande)[0];
+        }
+
+        /// <summary>
+        /// retrieve orderdocument by its id
+        /// </summary>
+        public CommandeDocument retrieveCommandeDocumentById(string id)
+        {
+            String jsonIdDocument = convertToJson("id", id);
+            IEnumerable<CommandeDocument> commandeDocument = TraitementRecup<CommandeDocument>(GET, "commandeDocument/" + jsonIdDocument);
+ 
+            return new List<CommandeDocument>(commandeDocument)[0];
+        }
+
+        /// <summary>
+        /// add a new order document
+        /// </summary>
+        public bool AddCommandeDocument(CommandeDocument commandeDocument)
+        {
+            String jsonCommandeDocument = JsonConvert.SerializeObject(commandeDocument, new CustomDateTimeConverter()); 
+            try
+            {
+                Console.WriteLine(jsonCommandeDocument);
+                // récupération soit d'une liste vide (requête ok) soit de null (erreur)
+                List<CommandeDocument> liste = TraitementRecup<CommandeDocument>(POST, "commandedocument/" + jsonCommandeDocument);
+                return (liste != null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// set the name of the order with retrieve the numbers of the order
+        /// </summary>
+        public string SetNameOrder(bool livre)
+        {
+            IEnumerable<Commande> commande = TraitementRecup<Commande>(GET, "commande");
+            List<Commande> liste = new List<Commande>(commande);
+
+            if (livre)
+            {
+                List<CommandeDocument> listeCommande = GetAllCommandeDocumentsLivre();
+
+                if (listeCommande.Count == 0)
+                {
+                    return "CMDL1";
+                }
+
+                string id = listeCommande[listeCommande.Count - 1].id;
+                string number = id.Substring(4);
+                int numberInt = Int32.Parse(number);
+                numberInt++;
+                string newId = "CMDL" + numberInt;
+                return newId;     
+            }
+            else
+            {
+                List<CommandeDocument> listeCommande = GetAllCommandeDocumentsDvd();
+
+                if (listeCommande.Count == 0)
+                {
+                    return "CMDD1";
+                }
+
+
+                string id = listeCommande[listeCommande.Count - 1].id;
+                string number = id.Substring(4);
+                int numberInt = Int32.Parse(number);
+                numberInt++;
+                string newId = "CMDD" + numberInt;
+                return newId;
+            }
+            
+            
+        }
+
+        /// <summary>
+        /// get commandedocument dvd
+        /// </summary>
+        public List<CommandeDocument> GetAllCommandeDocumentsDvd()
+        {
+            // retrieve all the order document where the id starts with CMDD
+            IEnumerable<CommandeDocument> commandeDocument = TraitementRecup<CommandeDocument>(GET, "commandedocument");
+            List<CommandeDocument> listeDvd = new List<CommandeDocument>(commandeDocument);
+            List<CommandeDocument> liste = new List<CommandeDocument>();
+            foreach (CommandeDocument commande in listeDvd)
+            {
+                if (commande.id.StartsWith("CMDD"))
+                {
+                    liste.Add(commande);
+                }
+            }
+            return liste;
+        }
+
+        /// <summary>
+        /// get commandedocument livre
+        /// </summary>
+        public List<CommandeDocument> GetAllCommandeDocumentsLivre()
+        {
+            // retrieve all the order document where the id starts with CMDL
+            IEnumerable<CommandeDocument> commandeDocument = TraitementRecup<CommandeDocument>(GET, "commandedocument");
+            List<CommandeDocument> listeLivre = new List<CommandeDocument>(commandeDocument);
+            List<CommandeDocument> liste = new List<CommandeDocument>();
+            foreach (CommandeDocument commande in listeLivre)
+            {
+                if (commande.id.StartsWith("CMDL"))
+                {
+                    liste.Add(commande);
+                }
+            }
+            return liste;
+        }
+
+
+        /// <summary>
+        /// retrieve livre by its id
+        /// </summary>
+        public Document retrieveDocumentById(string id)
+        {
+            String jsonIdDocument = convertToJson("id", id);
+            IEnumerable<Document> livre = TraitementRecup<Document>(GET, "document/" + jsonIdDocument);
+            return new List<Document>(livre)[0];
+        }
+
+        /// <summary>
+        /// get order count
+        /// </summary>
+        public int GetOrderCount()
+        {
+            IEnumerable<Commande> commande = TraitementRecup<Commande>(GET, "commande");
+            List<Commande> liste = new List<Commande>(commande);
+            return liste.Count;
+        }
+
+        /// <summary>
+        /// update the status of the order
+        /// </summary>
+        public bool updateOrderStatus(string idCommande, string idStatus)
+        {
+            String jsonIdStatus = convertToJson("statut", idStatus);
+            try
+            {
+                // récupération soit d'une liste vide (requête ok) soit de null (erreur)
+                List<Commande> liste = TraitementRecup<Commande>(PUT, "commandedocument/" + idCommande + "/" + jsonIdStatus);
+                return (liste != null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return false;
+        }
+
+        ///<summary>
+        ///delete a command document
+        /// </summary>
+        public bool deleteOrder(string idCommande)
+        {
+            // convert the id to json
+            String jsonIdCommande = convertToJson("id", idCommande);
+            try
+            {
+                // récupération soit d'une liste vide (requête ok) soit de null (erreur)
+                List<CommandeDocument> liste = TraitementRecup<CommandeDocument>(DELETE, "commande/" + jsonIdCommande);
+                return (liste != null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// retrieve the id of the current order for adding a new orderdocument
+        /// </summary>
+        public string GetIdCommande(string idDocuement)
+        {
+            String jsonIdDocument = convertToJson("id", idDocuement);
+            try
+            {
+                // récupération soit d'une liste vide (requête ok) soit de null (erreur)
+                IEnumerable<Commande> commande = TraitementRecup<Commande>(GET, "commande/" + jsonIdDocument);
+                return new List<Commande>(commande)[0].id;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                return null;
+            }
+            
+        }
+
+
+        /// <summary>
+        /// add commande
+        /// </summary>
+        public bool AddCommande(Commande commande)
+        {
+            String jsonCommande = JsonConvert.SerializeObject(commande, new CustomDateTimeConverter());
+            try
+            {
+                Console.WriteLine(jsonCommande);
+                // récupération soit d'une liste vide (requête ok) soit de null (erreur)
+                List<Commande> liste = TraitementRecup<Commande>(POST, "commande/" + jsonCommande);
+                return (liste != null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Retourne toutes les livres à partir de la BDD
         /// </summary>
         /// <returns>Liste d'objets Livre</returns>
@@ -128,6 +390,12 @@ namespace MediaTekDocuments.dal
             List<Revue> lesRevues = TraitementRecup<Revue>(GET, "revue");
             return lesRevues;
         }
+
+        /// <summary>
+        /// Retrieve the list of all the commands from the database
+        /// </summary>
+        /// <returns>list of documents</returns>
+    
 
 
         /// <summary>
@@ -162,6 +430,7 @@ namespace MediaTekDocuments.dal
             return false; 
         }
 
+   
         /// <summary>
         /// Traitement de la récupération du retour de l'api, avec conversion du json en liste pour les select (GET)
         /// </summary>
